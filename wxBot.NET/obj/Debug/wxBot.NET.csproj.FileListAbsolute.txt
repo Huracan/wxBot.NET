@@ -1,0 +1,8 @@
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\bin\Debug\wxBot.NET.exe.config
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\bin\Debug\wxBot.NET.exe
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\bin\Debug\wxBot.NET.pdb
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\obj\Debug\wxBot.NET.exe
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\obj\Debug\wxBot.NET.pdb
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\obj\Debug\wxBot.NET.csprojResolveAssemblyReference.cache
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\bin\Debug\Gma.QrCodeNet.Encoding.Net35.dll
+E:\工程\微信机器人研究\wxBot.NET\wxBot.NET\wxBot.NET\bin\Debug\Newtonsoft.Json.dll
