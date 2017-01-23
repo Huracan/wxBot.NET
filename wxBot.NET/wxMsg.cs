@@ -9,6 +9,14 @@ namespace wxBot.NET
     public class wxMsg
     {
         /// <summary>
+        /// 消息ID
+        /// </summary>
+        public string MsgID
+        {
+            get;
+            set;
+        }
+        /// <summary>
         /// 消息发送方
         /// </summary>
         public string From
@@ -43,7 +51,7 @@ namespace wxBot.NET
         /// <summary>
         /// 消息内容
         /// </summary>
-        public string Msg
+        public string Content
         {
             get;
             set;
@@ -52,6 +60,14 @@ namespace wxBot.NET
         /// 消息类型
         /// </summary>
         public int Type
+        {
+            get;
+            set;
+        }
+        /// <summary>
+        /// 消息内容类型
+        /// </summary>
+        public int ContentType
         {
             get;
             set;

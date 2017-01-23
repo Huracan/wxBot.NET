@@ -10,10 +10,13 @@ namespace wxBot.NET
     {
         class newbot : wxbot
         {
-            public override void handle_msg()
+            public override void handle_msg_all(wxMsg msg)
             {
-                Console.WriteLine("yes");
-                Console.ReadKey();
+                if (msg.Type == 4 && msg.ContentType==0)
+                {
+                    string uid = get_user_id("Teano");
+                    send_msg_by_uid("test,do not reply", uid);
+                }
             }
         }
 
