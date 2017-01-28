@@ -13,32 +13,29 @@ namespace wxBot.NET
 {
     public class wxbot
     {
-        string UNKONWN = "unkonwn";
-        string SUCCESS = "200";
-        string SCANED = "201";
-        string TIMEOUT = "408";
+        private string UNKONWN = "unkonwn";
+        private string SUCCESS = "200";
+        private string SCANED = "201";
+        private string TIMEOUT = "408";
 
-        string uuid = "";
-        string redirect_uri = "";
-        string base_uri = "";
-        string base_host = "";
-        string uin = "";
-        string sid = "";
-        string skey = "";
-        string pass_ticket ="";
-        string device_id = "e1615250492";     // 'e' + repr(random.random())[2:17]
-       
-        string base_request="";
-        private static Dictionary<string, string> sync_key = new Dictionary<string, string>();
-        private static Dictionary<string, string> my_account = new Dictionary<string, string>();
+        private string uuid = "";
+        private string redirect_uri = "";
+        private string base_uri = "";
+        private string base_host = "";
+        private string uin = "";
+        private string sid = "";
+        private string skey = "";
+        private string pass_ticket = "";
+        private string device_id = "e1615250492";     // 'e' + repr(random.random())[2:17]
+
+        private string base_request = "";
+        private static Dictionary<string, string> dic_sync_key = new Dictionary<string, string>();
+        private static Dictionary<string, string> dic_my_account = new Dictionary<string, string>();
         string sync_key_str = "";
         string sync_host="";
     
-        /// <summary>
-        /// 当前登录微信用户
-        /// </summary>
-        private wxUser _me;
-        private List<Object> contact_all = new List<object>();   //完整通讯录
+     
+        private wxUser _me;    // 当前登录微信用户
         private List<Object> contact_list = new List<object>();   //联系人
         private List<Object> public_list = new List<object>();   //公共号
         private List<Object> special_list = new List<object>();   //特殊号
@@ -46,59 +43,56 @@ namespace wxBot.NET
 
         public  wxbot()
         {
-        //    bool DEBUG = false;
-        //string uuid = "";
-        //string base_uri = "";
-        //string base_host = "";
-        //string redirect_uri = "";
-        //string uin = "";
-        //string sid = "";
-        //string skey = "";
-        //string pass_ticket ="";
-        //string device_id = 'e' + repr(random.random())[2:17]
-        //string base_request = {}
-        //string sync_key_str = "";
-        //string sync_key = []
-        //string sync_host = "";
 
-
-        //int batch_count = 50;    //一次拉取50个联系人的信息
-        //self.full_user_name_list = []    #直接获取不到通讯录时，获取的username列表
-        //self.wxid_list = []   #获取到的wxid的列表
-        //self.cursor = 0   #拉取联系人信息的游标
-        //self.is_big_contact = False  #通讯录人数过多，无法直接获取
-        //#文件缓存目录
-        //self.temp_pwd  =  os.path.join(os.getcwd(),'temp')
-        //if os.path.exists(self.temp_pwd) == False:
-        //    os.makedirs(self.temp_pwd)
-
-        //self.session = SafeSession()
-        //self.session.headers.update({'User-Agent': 'Mozilla/5.0 (X11; Linux i686; U;) Gecko/20070322 Kazehakase/0.4.5'})
-        //self.conf = {'qr': 'png'}
-
-        //self.my_account = {}  # 当前账户
-
-        //# 所有相关账号: 联系人, 公众号, 群组, 特殊账号
-        //self.member_list = []
-
-        //# 所有群组的成员, {'group_id1': [member1, member2, ...], ...}
-        //self.group_members = {}
-
-        //# 所有账户, {'group_member':{'id':{'type':'group_member', 'info':{}}, ...}, 'normal_member':{'id':{}, ...}}
-        //self.account_info = {'group_member': {}, 'normal_member': {}}
-
-        //self.contact_list = []  # 联系人列表
-        //self.public_list = []  # 公众账号列表
-        //self.group_list = []  # 群聊列表
-        //self.special_list = []  # 特殊账号列表
-        //self.encry_chat_room_id_list = []  # 存储群聊的EncryChatRoomId，获取群内成员头像时需要用到
-
-        //self.file_index = 0
-          
         }
 
-        public  virtual void handle_msg()
+        /// <summary>
+        /// 主逻辑
+        /// </summary>
+        public void run()
         {
+            //获取uuid
+            if (!get_uuid())
+            {
+                Console.WriteLine("登录失败：uuid获取失败");
+            }
+            //获取登录二维码
+            gen_qr_code();
+            Console.WriteLine("[INFO] Please use WeChat to scan the QR code .");
+            //等待扫描检测
+            string result = wait4login();
+            if (result != SUCCESS)
+            {
+                Console.WriteLine("[ERROR] Web WeChat login failed. failed code=" + result);
+                return;
+            }
+            //获取skey sid uid pass_ticket
+            if (login())
+            {
+                Console.WriteLine("[INFO] Web WeChat login succeed .");
+            }
+            else
+            {
+                Console.WriteLine("[ERROR] Web WeChat login failed .");
+                return;
+            }
+            //初始化
+            if (init())
+            {
+                Console.WriteLine("[INFO] Web WeChat init succeed .");
+            }
+            else
+            {
+                Console.WriteLine("[INFO] Web WeChat init failed .");
+                return;
+            }
+            //获取联系人
+            get_contact();
+            Console.WriteLine("[INFO] Get " + contact_list.Count + " contacts");
+            Console.WriteLine("[INFO] Start to process messages .");            
+            //开始处理消息
+            proc_msg();
+            Console.ReadKey();
         }
 
         /// <summary>
@@ -106,6 +100,11 @@ namespace wxBot.NET
         /// </summary>
         public void get_contact()
         {
+            contact_list.Clear();
+            public_list.Clear();
+            special_list.Clear();
+            group_list.Clear();
+
             string[] special_users = {"newsapp", "fmessage", "filehelper", "weibo", "qqmail",
                          "fmessage", "tmessage", "qmessage", "qqsync", "floatbottle",
                          "lbsapp", "shakeapp", "medianote", "qqfriend", "readerapp",
@@ -115,12 +114,10 @@ namespace wxBot.NET
                          "officialaccounts", "notification_messages", "wxid_novlwrv3lqwv11",
                          "gh_22b87fa7cb3c", "wxitil", "userexperience_alarm", "notification_messages"};
 
-           //List<object> contact_all = new List<object>();
-           string contact_str=WebUrlRule.WebGet(base_uri + "/webwxgetcontact?pass_ticket=" + pass_ticket + "&skey=" + skey + "&r=" + CommonRule.ConvertDateTimeToInt(DateTime.Now));
+           string contact_str=Http.WebGet(base_uri + "/webwxgetcontact?pass_ticket=" + pass_ticket + "&skey=" + skey + "&r=" + Common.ConvertDateTimeToInt(DateTime.Now));
            JObject contact_result=JsonConvert.DeserializeObject(contact_str) as JObject;
            if (contact_result != null)
            {
-
                foreach (JObject contact in contact_result["MemberList"])  //完整好友名单
                {
                    wxUser user = new wxUser();
@@ -133,9 +130,7 @@ namespace wxBot.NET
                    user.RemarkName = contact["RemarkName"].ToString();
                    user.RemarkPYQuanPin = contact["RemarkPYQuanPin"].ToString();
                    user.Sex = contact["Sex"].ToString();
-                   user.Signature = contact["Signature"].ToString();
-                   contact_all.Add(user);
-
+                   user.Signature = contact["Signature"].ToString();                  
                   
                    if((int.Parse(contact["VerifyFlag"].ToString())&8)!= 0) //公众号
                    {
@@ -151,83 +146,19 @@ namespace wxBot.NET
                    }
                    else
                    {
-                       contact_list.Add(user);
+                       contact_list.Add(user); //联系人
                    }
                }
-               
-           }
-           IOrderedEnumerable<object> list_all = contact_all.OrderBy(e => (e as wxUser).ShowPinYin);
-
-           wxUser wx; string start_char;
-           foreach (object o in list_all)
-           {
-               wx = o as wxUser;
-               start_char = wx.ShowPinYin == "" ? "" : wx.ShowPinYin.Substring(0, 1);
-               if (!contact_all.Contains(start_char.ToUpper()))
-               {
-                   contact_all.Add(start_char.ToUpper());
-               }
-               contact_all.Add(o);
-           }
-        }
-
-
-        /// <summary>
-        /// 主逻辑
-        /// </summary>
-        public  void run()
-        {
-            if (!get_uuid())
-            {
-                Console.WriteLine("登录失败：uuid获取失败");
-            }
-
-            gen_qr_code();
-            Console.WriteLine("[INFO] Please use WeChat to scan the QR code .");
-
-            string result=wait4login();
-            if (result != SUCCESS)
-            {
-                Console.WriteLine("[ERROR] Web WeChat login failed. failed code="+result);
-                return;
-            }
-
-            if (login())
-            {
-                Console.WriteLine("[INFO] Web WeChat login succeed .");
-            }
-            else
-            {
-                Console.WriteLine("[ERROR] Web WeChat login failed .");
-                return;
-            }
-
-            if (init())
-            {
-                Console.WriteLine("[INFO] Web WeChat init succeed .");
-            }
-            else
-            {
-                Console.WriteLine("[INFO] Web WeChat init failed .");
-                return;
-            }
-            get_contact();
-             Console.WriteLine("[INFO] Get "+ contact_list.Count+" contacts");
-             Console.WriteLine("[INFO] Start to process messages .");
-            proc_msg();
-
-
-
-            Console.ReadKey();
-        }
+           }          
+        }        
         /// <summary>
         /// 获取本次登录会话ID->uuid
         /// </summary>
         /// <returns></returns>
         public bool get_uuid()
         {
-            string url = "https://login.weixin.qq.com/jslogin?appid=wx782c26e4c19acffb&fun=new&lang=zh_CN&_=" + CommonRule.ConvertDateTimeToInt(DateTime.Now);
-            string ReturnValue = WebUrlRule.WebGet(url);
+            string url = "https://login.weixin.qq.com/jslogin?appid=wx782c26e4c19acffb&fun=new&lang=zh_CN&_=" + Common.ConvertDateTimeToInt(DateTime.Now);
+            string ReturnValue = Http.WebGet(url);
             Match match = Regex.Match(ReturnValue, "window.QRLogin.code = (\\d+); window.QRLogin.uuid = \"(\\S+?)\"");
             if (match.Success)
             {
@@ -245,7 +176,7 @@ namespace wxBot.NET
         public void gen_qr_code()
         {
             string url = "https://login.weixin.qq.com/l/" + uuid;
-            Image QRCode=CommonRule.GenerateQRCode(url, Color.Black, Color.White);
+            Image QRCode=Common.GenerateQRCode(url, Color.Black, Color.White);
             if (QRCode != null)
             {
                 QRCode.Save("img\\QRcode.png", System.Drawing.Imaging.ImageFormat.Png);
@@ -273,15 +204,13 @@ namespace wxBot.NET
             string status_data = null;
             while (retry_time > 0)
             {
-
-                string login_result = WebUrlRule.WebGet("https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?" + "tip=" + tip + "&uuid=" + uuid + "&_=" + CommonRule.ConvertDateTimeToInt(DateTime.Now));
+                string login_result = Http.WebGet("https://login.weixin.qq.com/cgi-bin/mmwebwx-bin/login?" + "tip=" + tip + "&uuid=" + uuid + "&_=" + Common.ConvertDateTimeToInt(DateTime.Now));
                 Match match = Regex.Match(login_result, "window.code=(\\d+)");
                 if (match.Success)
                 {
                     status_data = login_result;
                     status_code = match.Groups[1].Value;
                 }
-
                 if (status_code == SCANED) //已扫描 未登录
                 {
                     Console.WriteLine("[INFO] Please confirm to login .");
@@ -300,7 +229,7 @@ namespace wxBot.NET
                         return status_code;
                     }
                 }
-                else if (status_code == TIMEOUT)
+                else if (status_code == TIMEOUT)  //超时
                 {
                     Console.WriteLine("[ERROR] WeChat login exception return_code=" + status_code + ". retry in" + try_later_secs + "secs later...");
                     tip = "1";
@@ -325,7 +254,7 @@ namespace wxBot.NET
                 Console.WriteLine("[ERROR] Login failed due to network problem, please try again.");
                 return false;
             }
-            string SessionInfo=WebUrlRule.WebGet(redirect_uri);
+            string SessionInfo=Http.WebGet(redirect_uri);
             pass_ticket = SessionInfo.Split(new string[] { "pass_ticket" }, StringSplitOptions.None)[1].TrimStart('>').TrimEnd('<', '/');
             skey = SessionInfo.Split(new string[] { "skey" }, StringSplitOptions.None)[1].TrimStart('>').TrimEnd('<', '/');
             sid = SessionInfo.Split(new string[] { "wxsid" }, StringSplitOptions.None)[1].TrimStart('>').TrimEnd('<', '/');
@@ -344,7 +273,7 @@ namespace wxBot.NET
         /// <returns></returns>
         public bool init()
         {
-            string ReturnValue = WebUrlRule.WebPost(base_uri + "/webwxinit?r=" + CommonRule.ConvertDateTimeToInt(DateTime.Now) + "&lang=en_US" + "&pass_ticket=" + pass_ticket, base_request);
+            string ReturnValue = Http.WebPost(base_uri + "/webwxinit?r=" + Common.ConvertDateTimeToInt(DateTime.Now) + "&lang=en_US" + "&pass_ticket=" + pass_ticket, base_request);
             JObject init_result = JsonConvert.DeserializeObject(ReturnValue) as JObject;
             _me = new wxUser();
             _me.UserName = init_result["User"]["UserName"].ToString();
@@ -357,21 +286,15 @@ namespace wxBot.NET
             _me.RemarkPYQuanPin = init_result["User"]["RemarkPYQuanPin"].ToString();
             _me.Sex = init_result["User"]["Sex"].ToString();
             _me.Signature = init_result["User"]["Signature"].ToString();
-
             foreach (JObject synckey in init_result["SyncKey"]["List"])  //同步键值
             {
-                sync_key.Add(synckey["Key"].ToString(), synckey["Val"].ToString());
+                dic_sync_key.Add(synckey["Key"].ToString(), synckey["Val"].ToString());
             }
-            //foreach (JObject _user in init_result["User"])  //同步键值
-            //{
-            //    //sync_key.Add(_user["Key"].ToString(), _user["Val"].ToString());
-            //}
-            foreach (KeyValuePair<string, string> p in sync_key)
+            foreach (KeyValuePair<string, string> p in dic_sync_key)
             {
                 sync_key_str += p.Key + "_" + p.Value + "%7C";
             }
             sync_key_str = sync_key_str.TrimEnd('%', '7', 'C');
-
             return init_result["BaseResponse"]["Ret"].ToString() =="0";
         }
         /// <summary>
@@ -380,7 +303,7 @@ namespace wxBot.NET
         /// <returns></returns>
         public void status_notify()
         {
-            string ReturnValue = WebUrlRule.WebGet(base_uri + "/webwxstatusnotify?lang=zh_CN&pass_ticket=" + pass_ticket);
+            string ReturnValue = Http.WebGet(base_uri + "/webwxstatusnotify?lang=zh_CN&pass_ticket=" + pass_ticket);
            
             //return init_result["BaseResponse"]["Ret"].ToString() == "0";
         }
@@ -401,6 +324,7 @@ namespace wxBot.NET
                 retcode = "-1";
             }
             if (retcode == "0") return true;
+            //sync_host = "webpush." + base_host;
             sync_host = "webpush2." + base_host;
             try
             {
@@ -424,10 +348,10 @@ namespace wxBot.NET
            string selector = "";
 
            string _synccheck_url = "https://{0}/cgi-bin/mmwebwx-bin/synccheck?sid={1}&uin={2}&synckey={3}&r={4}&skey={5}&deviceid={6}&_={7}";
-           _synccheck_url = string.Format(_synccheck_url, sync_host, sid, uin, sync_key_str, (long)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds, skey.Replace("@", "%40"), device_id, CommonRule.ConvertDateTimeToInt(DateTime.Now));
+           _synccheck_url = string.Format(_synccheck_url, sync_host, sid, uin, sync_key_str, (long)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds, skey.Replace("@", "%40"), device_id, Common.ConvertDateTimeToInt(DateTime.Now));
            try
            {
-               string ReturnValue = WebUrlRule.WebGet(_synccheck_url);
+               string ReturnValue = Http.WebGet(_synccheck_url);
                Match match = Regex.Match(ReturnValue, "window.synccheck=\\{retcode:\"(\\d+)\",selector:\"(\\d+)\"\\}");
                if (match.Success)
                {
@@ -445,33 +369,31 @@ namespace wxBot.NET
 
        public JObject sync()
        {
-           string sync_json = "{{\"BaseRequest\" : {{\"DeviceID\":\"e1615250492\",\"Sid\":\"{1}\", \"Skey\":\"{5}\", \"Uin\":\"{0}\"}},\"SyncKey\" : {{\"Count\":{2},\"List\":[{3}]}},\"rr\" :{4}}}";
-          
-
+           string sync_json = "{{\"BaseRequest\" : {{\"DeviceID\":\"{6}\",\"Sid\":\"{1}\", \"Skey\":\"{5}\", \"Uin\":\"{0}\"}},\"SyncKey\" : {{\"Count\":{2},\"List\":[{3}]}},\"rr\" :{4}}}";
            string sync_keys = "";
-           foreach (KeyValuePair<string, string> p in sync_key)
+           foreach (KeyValuePair<string, string> p in dic_sync_key)
            {
                sync_keys += "{\"Key\":" + p.Key + ",\"Val\":" + p.Value + "},";
            }
            sync_keys = sync_keys.TrimEnd(',');
-           sync_json = string.Format(sync_json, uin, sid, sync_key.Count, sync_keys, (long)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds, skey);
+           sync_json = string.Format(sync_json, uin, sid, dic_sync_key.Count, sync_keys, (long)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds, skey,device_id);
 
            if (sid != null && uin != null)
            {
-               string sync_str = WebUrlRule.WebPost(base_uri + "/webwxsync?sid=" + sid + "&lang=zh_CN&skey=" + skey + "&pass_ticket=" + pass_ticket, sync_json);
+               string sync_str = Http.WebPost(base_uri + "/webwxsync?sid=" + sid + "&lang=zh_CN&skey=" + skey + "&pass_ticket=" + pass_ticket, sync_json);
                
 
                JObject sync_resul = JsonConvert.DeserializeObject(sync_str) as JObject;
 
                if (sync_resul["SyncKey"]["Count"].ToString() != "0")
                {
-                   sync_key.Clear();
+                   dic_sync_key.Clear();
                    foreach (JObject key in sync_resul["SyncKey"]["List"])
                    {
-                       sync_key.Add(key["Key"].ToString(), key["Val"].ToString());
+                       dic_sync_key.Add(key["Key"].ToString(), key["Val"].ToString());
                    }
                    sync_key_str = "";
-                   foreach (KeyValuePair<string, string> p in sync_key)
+                   foreach (KeyValuePair<string, string> p in dic_sync_key)
                    {
                        sync_key_str += p.Key + "_" + p.Value + "%7C";
                    }
@@ -484,7 +406,11 @@ namespace wxBot.NET
                return null;
            }
        }
-
+        /// <summary>
+        /// 判断用户是否在在联系人中
+        /// </summary>
+        /// <param name="Name"></param>
+        /// <returns></returns>
        public bool is_contact(string Name)
        {
              foreach (Object u in contact_list)
@@ -502,7 +428,11 @@ namespace wxBot.NET
             }
             return false;
        }
-
+        /// <summary>
+        /// 判断用户是否是公共号
+        /// </summary>
+        /// <param name="Name"></param>
+        /// <returns></returns>
         public bool is_public(string Name)
        {
              foreach (Object u in public_list)
@@ -520,10 +450,14 @@ namespace wxBot.NET
             }
             return false;
        }
-
-         public bool is_special(string Name)
-       {
-             foreach (Object u in special_list)
+        /// <summary>
+        /// 判断用户是否是特殊号
+        /// </summary>
+        /// <param name="Name"></param>
+        /// <returns></returns>
+        public bool is_special(string Name)
+        {
+            foreach (Object u in special_list)
             {
                 wxUser user = u as wxUser;
                 if (user != null)
@@ -537,7 +471,7 @@ namespace wxBot.NET
                     return false;
             }
             return false;
-       }
+        }
 
          public void handle_msg(JObject r)
          {
@@ -687,9 +621,6 @@ namespace wxBot.NET
          public bool  send_msg_by_uid(string word,string  dst="filehelper")
          {
              //dst = get_user_id(dst);
-
-
-
            string url = base_uri + "/webwxsendmsg?pass_ticket="+pass_ticket;
 
            message _message = new message();
@@ -702,7 +633,7 @@ namespace wxBot.NET
             string para2=a.ToString("f3").Replace(".",string.Empty);
             string para1 = (DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds.ToString("f0");
             string msg_id = para1 + para2;
-            word = CommonRule.ConvertGB2312ToUTF8(word);
+            word = Common.ConvertGB2312ToUTF8(word);
             MSG.Content = word;
             MSG.LocalID = msg_id;
             MSG.ClientMsgId = msg_id;
@@ -716,7 +647,7 @@ namespace wxBot.NET
             _message.BaseRequest = BaseRequest;
 
             string jsonStr = JsonConvert.SerializeObject(_message);
-            string ReturnVal=WebUrlRule.WebPost2(url, jsonStr);
+            string ReturnVal=Http.WebPost2(url, jsonStr);
             JObject jReturn=JsonConvert.DeserializeObject(ReturnVal) as JObject;
             return jReturn ["BaseResponse"]["Ret"].ToString() == "0";
           
@@ -758,311 +689,274 @@ namespace wxBot.NET
         /// <summary>
         /// 处理消息
         /// </summary>
-       public void proc_msg()
-       {
-           test_sync_check();
-           while (true)
-           {
-               float check_time = (float)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds;
-               try
-               {
-                 string[] ReturnArray= sync_check();//[retcode, selector] 
-                 string retcode=ReturnArray[0];
-                 string selector=ReturnArray[1];
-
-                if (retcode == "1100")  //从微信客户端上登出
-                    break;
-                else if (retcode == "1101") // 从其它设备上登了网页微信
-                    break;
-                else if (retcode == "0")
+        public void proc_msg()
+        {
+            test_sync_check();
+            while (true)
+            {
+                float check_time = (float)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds;
+                try
                 {
-                    if(selector == "2")  // 有新消息
+                    string[] ReturnArray = sync_check();//[retcode, selector] 
+                    string retcode = ReturnArray[0];
+                    string selector = ReturnArray[1];
+
+                    if (retcode == "1100")  //从微信客户端上登出
+                        break;
+                    else if (retcode == "1101") // 从其它设备上登了网页微信
+                        break;
+                    else if (retcode == "0")
                     {
-                        JObject r = sync();
-                        if (r != null)
+                        if (selector == "2")  // 有新消息
                         {
-                            handle_msg(r);
+                            JObject r = sync();
+                            if (r != null)
+                            {
+                                handle_msg(r);
+                            }
                         }
+                        //else if ( selector == "3")  // 未知
+                        //{
+                        //    r = self.sync()
+                        //    if r is not None:
+                        //        self.handle_msg(r)
+                        //}
+                        else if (selector == "4")   //通讯录更新
+                        {
+                            JObject r = sync();
+                            if (r != null)
+                            {
+                                get_contact();
+                                Console.WriteLine("[INFO] Contacts Updated .");
+                            }
+                        }
+                        else
+                        {
+                        }
+                        //    r = self.sync()
+                        //    if r is not None:
+                        //        self.get_contact()
+                        //elif selector == '6':  # 可能是红包
+                        //    r = self.sync()
+                        //    if r is not None:
+                        //        self.handle_msg(r)
+                        //elif selector == '7':  # 在手机上操作了微信
+                        //    r = self.sync()
+                        //    if r is not None:
+                        //        self.handle_msg(r)
+                        //elif selector == '0':  # 无事件
+                        //    pass
+                        //else:
+                        //    print '[DEBUG] sync_check:', retcode, selector
+                        //    r = self.sync()
+                        //    if r is not None:
+                        //        self.handle_msg(r)
                     }
-                    //else if ( selector == "3")  // 未知
-                    //{
-                    //    r = self.sync()
-                    //    if r is not None:
-                    //        self.handle_msg(r)
-                    //}
-                    //elif selector == '4':  # 通讯录更新
-                    //    r = self.sync()
-                    //    if r is not None:
-                    //        self.get_contact()
-                    //elif selector == '6':  # 可能是红包
-                    //    r = self.sync()
-                    //    if r is not None:
-                    //        self.handle_msg(r)
-                    //elif selector == '7':  # 在手机上操作了微信
-                    //    r = self.sync()
-                    //    if r is not None:
-                    //        self.handle_msg(r)
-                    //elif selector == '0':  # 无事件
-                    //    pass
-                    //else:
-                    //    print '[DEBUG] sync_check:', retcode, selector
-                    //    r = self.sync()
-                    //    if r is not None:
-                    //        self.handle_msg(r)
+                    else
+                    {
+                        Thread.Sleep(2000);
+                        schedule();                        
+                    }
                 }
-                else
+                catch(Exception ex)
                 {
-                    //print '[DEBUG] sync_check:', retcode, selector
-                    //Thread.Slee
+                    Console.WriteLine("[ERROR] Except in proc_msg");
+                    Console.WriteLine(ex.ToString());
                 }
-                //self.schedule()
-               }
-            catch
-                   {
-                //print '[ERROR] Except in proc_msg'
-                //print format_exc()
+                check_time = (float)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds - check_time;
+                if (check_time < 0.8)
+                    Thread.Sleep((int)(1.0 - check_time) * 1000);
             }
-            check_time = (float)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds - check_time;
-            if (check_time < 0.8)
-                Thread.Sleep((int)(1.0 - check_time)*1000);
-
-           }
-       }
-       /// <summary>
-       /// 发送消息
-       /// </summary>
-       /// <param name="msg"></param>
-       /// <param name="from"></param>
-       /// <param name="to"></param>
-       /// <param name="type"></param>
-       public void SendMsg(string msg, string from, string to, int type)
-       {
-           string msg_json = "{{" +
-           "\"BaseRequest\":{{" +
-               "\"DeviceID\" : \"e441551176\"," +
-               "\"Sid\" : \"{0}\"," +
-               "\"Skey\" : \"{6}\"," +
-               "\"Uin\" : \"{1}\"" +
-           "}}," +
-           "\"Msg\" : {{" +
-               "\"ClientMsgId\" : {8}," +
-               "\"Content\" : \"{2}\"," +
-               "\"FromUserName\" : \"{3}\"," +
-               "\"LocalID\" : {9}," +
-               "\"ToUserName\" : \"{4}\"," +
-               "\"Type\" : {5}" +
-           "}}," +
-           "\"rr\" : {7}" +
-           "}}";
-
-           string _sendmsg_url = "https://wx.qq.com/cgi-bin/mmwebwx-bin/webwxsendmsg?sid=";
-
-           if (sid != null && uin != null)
-           {
-               msg_json = string.Format(msg_json, sid, uin, msg, from, to, type, skey, DateTime.Now.Millisecond, DateTime.Now.Millisecond, DateTime.Now.Millisecond);
-
-               string send_result = WebUrlRule.WebPost(_sendmsg_url + sid + "&lang=zh_CN&pass_ticket=" + pass_ticket, msg_json);
-              
-           }
-       } 
-  
+        }
         /// <summary>
         /// 解析收到的消息
         /// </summary>
-        /// <param name="msg"></param>
-        private static Dictionary<string, string> Ret_extract = new Dictionary<string, string>();
-         public  wxMsg extract_msg_content(wxMsg msg)
-         {
-         
-        //content_type_id:
-        //    0 -> Text
-        //    1 -> Location
-        //    3 -> Image
-        //    4 -> Voice
-        //    5 -> Recommend
-        //    6 -> Animation
-        //    7 -> Share
-        //    8 -> Video
-        //    9 -> VideoCall
-        //    10 -> Redraw
-        //    11 -> Empty
-        //    99 -> Unknown
-        //:param msg_type_id: 消息类型id
-        //:param msg: 消息结构体
-        //:return: 解析的消息
-      
-        int mtype = msg.ContentType;
-        //string content = HTMLParser.HTMLParser().unescape(msg['Content']);
-             string content = System.Net.WebUtility.HtmlDecode(msg.Content);
-             
-        string msg_id = msg.MsgID;
-
-        //msg_content = {}
-        if (msg.Type == 0)   
+        /// <param name="msg"></param>    
+        ///  content_type_id:
+        ///    0 -> Text
+        ///    1 -> Location
+        ///    3 -> Image
+        ///    4 -> Voice
+        ///    5 -> Recommend
+        ///    6 -> Animation
+        ///    7 -> Share
+        ///    8 -> Video
+        ///    9 -> VideoCall
+        ///    10 -> Redraw
+        ///    11 -> Empty
+        ///    99 -> Unknown
+        ///:param msg_type_id: 消息类型id
+        ///:param msg: 消息结构体
+        ///:return: 解析的消息
+        public wxMsg extract_msg_content(wxMsg msg)
         {
-            //Ret_extract.Add("type", "11");
-            //Ret_extract.Add("data", "");
-            msg.ContentType = 11;
-        }
-        else if (msg.Type == 2)     //File Helper
-        {
-            //Ret_extract.Add("type", "0");
-            //Ret_extract.Add("data",content.Replace("<br/>", "\n") );
-            msg.ContentType = 0;
+            int mtype = msg.ContentType;
+            //string content = HTMLParser.HTMLParser().unescape(msg['Content']);
+            string content = System.Net.WebUtility.HtmlDecode(msg.Content);
 
-        }
-        else if (msg.Type == 3)   // 群聊
-        {
-            int sp = content.IndexOf("<br/>");
-            string uid = content.Substring(0, sp);
-            content = content.Substring(sp);
-            content = content.Replace("<br/>", "");
-            uid = uid.Remove(uid.Length, 1);
-            //name = self.get_contact_prefer_name(self.get_contact_name(uid))
-            //if not name:
-            //    name = self.get_group_member_prefer_name(self.get_group_member_name(msg['FromUserName'], uid))
-            //if not name:
-            //    name = 'unknown'
-            //msg_content['user'] = {'id': uid, 'name': name}
-        }
+            string msg_id = msg.MsgID;
 
-
-
-        else//# Self, Contact, Special, Public, Unknown
-        {
-        }
-
-        //msg_prefix = (msg_content['user']['name'] + ':') if 'user' in msg_content else ''
-
-        if (mtype == 1)
-        {
-            if (content.IndexOf("http://weixin.qq.com/cgi-bin/redirectforward?args=") != -1)
+            //msg_content = {}
+            if (msg.Type == 0)
             {
-                //string r =WebUrlRule.WebGet(content);
-                //r.encoding = 'gbk'
-                //data = r.text
-                //pos = self.search_content('title', data, 'xml')
-                //msg_content['type'] = 1
-                //msg_content['data'] = pos
-                //msg_content['detail'] = data
-                //if self.DEBUG:
-                //    print '    %s[Location] %s ' % (msg_prefix, pos)
+                msg.ContentType = 11;
             }
-            else
+            else if (msg.Type == 2)     //File Helper
             {
                 msg.ContentType = 0;
-                //if msg_type_id == 3 or (msg_type_id == 1 and msg['ToUserName'][:2] == '@@'):  # Group text message
-                //    msg_infos = self.proc_at_info(content)
-                //    str_msg_all = msg_infos[0]
-                //    str_msg = msg_infos[1]
-                //    detail = msg_infos[2]
-                //    msg_content['data'] = str_msg_all
-                //    msg_content['detail'] = detail
-                //    msg_content['desc'] = str_msg
-                //else:
-                //    msg_content['data'] = content
-                //if self.DEBUG:
-                //    try:
-                //        print '    %s[Text] %s' % (msg_prefix, msg_content['data'])
-                //    except UnicodeEncodeError:
-                //        print '    %s[Text] (illegal text).' % msg_prefix
             }
-        }
-        //elif mtype == 3:
-        //    msg_content['type'] = 3
-        //    msg_content['data'] = self.get_msg_img_url(msg_id)
-        //    msg_content['img'] = self.session.get(msg_content['data']).content.encode('hex')
-        //    if self.DEBUG:
-        //        image = self.get_msg_img(msg_id)
-        //        print '    %s[Image] %s' % (msg_prefix, image)
-        //elif mtype == 34:
-        //    msg_content['type'] = 4
-        //    msg_content['data'] = self.get_voice_url(msg_id)
-        //    msg_content['voice'] = self.session.get(msg_content['data']).content.encode('hex')
-        //    if self.DEBUG:
-        //        voice = self.get_voice(msg_id)
-        //        print '    %s[Voice] %s' % (msg_prefix, voice)
-        //elif mtype == 37:
-        //    msg_content['type'] = 37
-        //    msg_content['data'] = msg['RecommendInfo']
-        //    if self.DEBUG:
-        //        print '    %s[useradd] %s' % (msg_prefix,msg['RecommendInfo']['NickName'])
-        //elif mtype == 42:
-        //    msg_content['type'] = 5
-        //    info = msg['RecommendInfo']
-        //    msg_content['data'] = {'nickname': info['NickName'],
-        //                           'alias': info['Alias'],
-        //                           'province': info['Province'],
-        //                           'city': info['City'],
-        //                           'gender': ['unknown', 'male', 'female'][info['Sex']]}
-        //    if self.DEBUG:
-        //        print '    %s[Recommend]' % msg_prefix
-        //        print '    -----------------------------'
-        //        print '    | NickName: %s' % info['NickName']
-        //        print '    | Alias: %s' % info['Alias']
-        //        print '    | Local: %s %s' % (info['Province'], info['City'])
-        //        print '    | Gender: %s' % ['unknown', 'male', 'female'][info['Sex']]
-        //        print '    -----------------------------'
-        //elif mtype == 47:
-        //    msg_content['type'] = 6
-        //    msg_content['data'] = self.search_content('cdnurl', content)
-        //    if self.DEBUG:
-        //        print '    %s[Animation] %s' % (msg_prefix, msg_content['data'])
-        //elif mtype == 49:
-        //    msg_content['type'] = 7
-        //    if msg['AppMsgType'] == 3:
-        //        app_msg_type = 'music'
-        //    elif msg['AppMsgType'] == 5:
-        //        app_msg_type = 'link'
-        //    elif msg['AppMsgType'] == 7:
-        //        app_msg_type = 'weibo'
-        //    else:
-        //        app_msg_type = 'unknown'
-        //    msg_content['data'] = {'type': app_msg_type,
-        //                           'title': msg['FileName'],
-        //                           'desc': self.search_content('des', content, 'xml'),
-        //                           'url': msg['Url'],
-        //                           'from': self.search_content('appname', content, 'xml'),
-        //                           'content': msg.get('Content')  # 有的公众号会发一次性3 4条链接一个大图,如果只url那只能获取第一条,content里面有所有的链接
-        //                           }
-        //    if self.DEBUG:
-        //        print '    %s[Share] %s' % (msg_prefix, app_msg_type)
-        //        print '    --------------------------'
-        //        print '    | title: %s' % msg['FileName']
-        //        print '    | desc: %s' % self.search_content('des', content, 'xml')
-        //        print '    | link: %s' % msg['Url']
-        //        print '    | from: %s' % self.search_content('appname', content, 'xml')
-        //        print '    | content: %s' % (msg.get('content')[:20] if msg.get('content') else "unknown")
-        //        print '    --------------------------'
+            else if (msg.Type == 3)   // 群聊
+            {
+                int sp = content.IndexOf("<br/>");
+                string uid = content.Substring(0, sp);
+                content = content.Substring(sp);
+                content = content.Replace("<br/>", "");
+                //uid = uid.Remove(uid.Length-1, 1);
+                //name = self.get_contact_prefer_name(self.get_contact_name(uid))
+                //if not name:
+                //    name = self.get_group_member_prefer_name(self.get_group_member_name(msg['FromUserName'], uid))
+                //if not name:
+                //    name = 'unknown'
+                //msg_content['user'] = {'id': uid, 'name': name}
+            }
 
-        //elif mtype == 62:
-        //    msg_content['type'] = 8
-        //    msg_content['data'] = content
-        //    if self.DEBUG:
-        //        print '    %s[Video] Please check on mobiles' % msg_prefix
-        //elif mtype == 53:
-        //    msg_content['type'] = 9
-        //    msg_content['data'] = content
-        //    if self.DEBUG:
-        //        print '    %s[Video Call]' % msg_prefix
-        //elif mtype == 10002:
-        //    msg_content['type'] = 10
-        //    msg_content['data'] = content
-        //    if self.DEBUG:
-        //        print '    %s[Redraw]' % msg_prefix
-        //elif mtype == 10000:  # unknown, maybe red packet, or group invite
-        //    msg_content['type'] = 12
-        //    msg_content['data'] = msg['Content']
-        //    if self.DEBUG:
-        //        print '    [Unknown]'
-        //else:
-        //    msg_content['type'] = 99
-        //    msg_content['data'] = content
-        //    if self.DEBUG:
-        //        print '    %s[Unknown]' % msg_prefix
-        //return msg_content
-        return msg;
-         }
+
+
+            else//# Self, Contact, Special, Public, Unknown
+            {
+            }
+
+            //msg_prefix = (msg_content['user']['name'] + ':') if 'user' in msg_content else ''
+
+            if (mtype == 1)
+            {
+                if (content.IndexOf("http://weixin.qq.com/cgi-bin/redirectforward?args=") != -1)
+                {
+                    //string r =Http.WebGet(content);
+                    //r.encoding = 'gbk'
+                    //data = r.text
+                    //pos = self.search_content('title', data, 'xml')
+                    //msg_content['type'] = 1
+                    //msg_content['data'] = pos
+                    //msg_content['detail'] = data
+                    //if self.DEBUG:
+                    //    print '    %s[Location] %s ' % (msg_prefix, pos)
+                }
+                else
+                {
+                    msg.ContentType = 0;
+                    //if msg_type_id == 3 or (msg_type_id == 1 and msg['ToUserName'][:2] == '@@'):  # Group text message
+                    //    msg_infos = self.proc_at_info(content)
+                    //    str_msg_all = msg_infos[0]
+                    //    str_msg = msg_infos[1]
+                    //    detail = msg_infos[2]
+                    //    msg_content['data'] = str_msg_all
+                    //    msg_content['detail'] = detail
+                    //    msg_content['desc'] = str_msg
+                    //else:
+                    //    msg_content['data'] = content
+                    //if self.DEBUG:
+                    //    try:
+                    //        print '    %s[Text] %s' % (msg_prefix, msg_content['data'])
+                    //    except UnicodeEncodeError:
+                    //        print '    %s[Text] (illegal text).' % msg_prefix
+                }
+            }
+            //elif mtype == 3:
+            //    msg_content['type'] = 3
+            //    msg_content['data'] = self.get_msg_img_url(msg_id)
+            //    msg_content['img'] = self.session.get(msg_content['data']).content.encode('hex')
+            //    if self.DEBUG:
+            //        image = self.get_msg_img(msg_id)
+            //        print '    %s[Image] %s' % (msg_prefix, image)
+            //elif mtype == 34:
+            //    msg_content['type'] = 4
+            //    msg_content['data'] = self.get_voice_url(msg_id)
+            //    msg_content['voice'] = self.session.get(msg_content['data']).content.encode('hex')
+            //    if self.DEBUG:
+            //        voice = self.get_voice(msg_id)
+            //        print '    %s[Voice] %s' % (msg_prefix, voice)
+            //elif mtype == 37:
+            //    msg_content['type'] = 37
+            //    msg_content['data'] = msg['RecommendInfo']
+            //    if self.DEBUG:
+            //        print '    %s[useradd] %s' % (msg_prefix,msg['RecommendInfo']['NickName'])
+            //elif mtype == 42:
+            //    msg_content['type'] = 5
+            //    info = msg['RecommendInfo']
+            //    msg_content['data'] = {'nickname': info['NickName'],
+            //                           'alias': info['Alias'],
+            //                           'province': info['Province'],
+            //                           'city': info['City'],
+            //                           'gender': ['unknown', 'male', 'female'][info['Sex']]}
+            //    if self.DEBUG:
+            //        print '    %s[Recommend]' % msg_prefix
+            //        print '    -----------------------------'
+            //        print '    | NickName: %s' % info['NickName']
+            //        print '    | Alias: %s' % info['Alias']
+            //        print '    | Local: %s %s' % (info['Province'], info['City'])
+            //        print '    | Gender: %s' % ['unknown', 'male', 'female'][info['Sex']]
+            //        print '    -----------------------------'
+            //elif mtype == 47:
+            //    msg_content['type'] = 6
+            //    msg_content['data'] = self.search_content('cdnurl', content)
+            //    if self.DEBUG:
+            //        print '    %s[Animation] %s' % (msg_prefix, msg_content['data'])
+            //elif mtype == 49:
+            //    msg_content['type'] = 7
+            //    if msg['AppMsgType'] == 3:
+            //        app_msg_type = 'music'
+            //    elif msg['AppMsgType'] == 5:
+            //        app_msg_type = 'link'
+            //    elif msg['AppMsgType'] == 7:
+            //        app_msg_type = 'weibo'
+            //    else:
+            //        app_msg_type = 'unknown'
+            //    msg_content['data'] = {'type': app_msg_type,
+            //                           'title': msg['FileName'],
+            //                           'desc': self.search_content('des', content, 'xml'),
+            //                           'url': msg['Url'],
+            //                           'from': self.search_content('appname', content, 'xml'),
+            //                           'content': msg.get('Content')  # 有的公众号会发一次性3 4条链接一个大图,如果只url那只能获取第一条,content里面有所有的链接
+            //                           }
+            //    if self.DEBUG:
+            //        print '    %s[Share] %s' % (msg_prefix, app_msg_type)
+            //        print '    --------------------------'
+            //        print '    | title: %s' % msg['FileName']
+            //        print '    | desc: %s' % self.search_content('des', content, 'xml')
+            //        print '    | link: %s' % msg['Url']
+            //        print '    | from: %s' % self.search_content('appname', content, 'xml')
+            //        print '    | content: %s' % (msg.get('content')[:20] if msg.get('content') else "unknown")
+            //        print '    --------------------------'
+
+            //elif mtype == 62:
+            //    msg_content['type'] = 8
+            //    msg_content['data'] = content
+            //    if self.DEBUG:
+            //        print '    %s[Video] Please check on mobiles' % msg_prefix
+            //elif mtype == 53:
+            //    msg_content['type'] = 9
+            //    msg_content['data'] = content
+            //    if self.DEBUG:
+            //        print '    %s[Video Call]' % msg_prefix
+            //elif mtype == 10002:
+            //    msg_content['type'] = 10
+            //    msg_content['data'] = content
+            //    if self.DEBUG:
+            //        print '    %s[Redraw]' % msg_prefix
+            //elif mtype == 10000:  # unknown, maybe red packet, or group invite
+            //    msg_content['type'] = 12
+            //    msg_content['data'] = msg['Content']
+            //    if self.DEBUG:
+            //        print '    [Unknown]'
+            //else:
+            //    msg_content['type'] = 99
+            //    msg_content['data'] = content
+            //    if self.DEBUG:
+            //        print '    %s[Unknown]' % msg_prefix
+            //return msg_content
+            return msg;
+        }
         
     }
 }

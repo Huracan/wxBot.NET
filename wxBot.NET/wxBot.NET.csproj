@@ -36,7 +36,7 @@
       <HintPath>.\Gma.QrCodeNet.Encoding.Net35.dll</HintPath>
     </Reference>
     <Reference Include="Newtonsoft.Json">
-      <HintPath>.\Newtonsoft.Json.dll</HintPath>
+      <HintPath>Libs\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -48,17 +48,29 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Utility\CommonRule.cs" />
+    <Compile Include="Utility\Log.cs" />
+    <Compile Include="Objects\wxMsg.cs" />
+    <Compile Include="Objects\wxUser.cs" />
+    <Compile Include="SimpleWXbot.cs" />
+    <Compile Include="TulingWXBot.cs" />
+    <Compile Include="Utility\Common.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="test.cs" />
-    <Compile Include="Utility\WebRule.cs" />
+    <Compile Include="Utility\IniHelper.cs" />
+    <Compile Include="Utility\Http.cs" />
     <Compile Include="wxbot.cs" />
-    <Compile Include="wxMsg.cs" />
-    <Compile Include="wxUser.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <None Include="Config\conf.ini">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="img\QRcode.png">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libs\Gma.QrCodeNet.Encoding.Net35.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

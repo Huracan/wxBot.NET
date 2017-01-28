@@ -1,0 +1,10 @@
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\wxBot.NET.exe.config
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\obj\Release\wxBot.NET.csprojResolveAssemblyReference.cache
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\img\QRcode.png
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\Config\conf.ini
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\wxBot.NET.exe
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\wxBot.NET.pdb
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\Gma.QrCodeNet.Encoding.Net35.dll
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Release\Newtonsoft.Json.dll
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\obj\Release\wxBot.NET.exe
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\obj\Release\wxBot.NET.pdb
