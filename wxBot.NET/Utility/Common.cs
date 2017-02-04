@@ -47,9 +47,9 @@ namespace wxBot.NET
         /// <param name="DarkColor"></param>
         /// <param name="LightColor"></param>
         /// <returns></returns>
-        public static  Bitmap GenerateQRCode(string text, System.Drawing.Color DarkColor, System.Drawing.Color LightColor)
+        public static Bitmap GenerateQRCode(string text, System.Drawing.Color DarkColor, System.Drawing.Color LightColor)
         {
-            QrEncoder qrEncoder = new QrEncoder(ErrorCorrectionLevel.Q);
+            QrEncoder qrEncoder = new QrEncoder(ErrorCorrectionLevel.H);
             QrCode Code = qrEncoder.Encode(text);
             Bitmap TempBMP = new Bitmap(Code.Matrix.Width, Code.Matrix.Height);
             for (int X = 0; X <= Code.Matrix.Width - 1; X++)
@@ -64,6 +64,7 @@ namespace wxBot.NET
             }
             return TempBMP;
         }
+    
 
     }
 }

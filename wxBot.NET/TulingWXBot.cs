@@ -33,33 +33,6 @@ namespace wxBot.NET
         }
 
 
-        //def auto_switch(self, msg):
-        //    msg_data = msg['content']['data']
-        //    stop_cmd = [u'退下', u'走开', u'关闭', u'关掉', u'休息', u'滚开']
-        //    start_cmd = [u'出来', u'启动', u'工作']
-        //    if self.robot_switch:
-        //        for i in stop_cmd:
-        //            if i == msg_data:
-        //                self.robot_switch = False
-        //                self.send_msg_by_uid(u'[Robot]' + u'机器人已关闭！', msg['to_user_id'])
-        //                #print msg['to_user_id'],self.robot_switch
-        //    else:
-        //        for i in start_cmd:
-        //            if i == msg_data:
-        //                self.robot_switch = True
-        //                self.send_msg_by_uid(u'[Robot]' + u'机器人已开启！', msg['to_user_id'])
-        //                #print msg['to_user_id'],self.robot_switch
-
-        //def handle_msg_all(self, msg):
-        //    if not self.robot_switch and msg['msg_type_id'] != 1:
-        //        return
-        //    if msg['msg_type_id'] == 1 and msg['content']['type'] == 0:  # reply to self
-        //        #print msg
-        //        self.auto_switch(msg)
-        //    elif msg['msg_type_id'] == 4 and msg['content']['type'] == 0:  # text message from contact
-        //        self.send_msg_by_uid(self.tuling_auto_reply(msg['user']['id'], msg['content']['data']), msg['user']['id'])
-        //    elif msg['msg_type_id'] == 3 and msg['content']['type'] == 0:  # group text message
-
         public string tuling_auto_reply(string uid, wxMsg msg)
         {
             if (tuling_key != "")

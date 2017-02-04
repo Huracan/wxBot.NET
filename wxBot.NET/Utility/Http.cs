@@ -11,37 +11,14 @@ namespace wxBot.NET
     public class Http
     {
         /// <summary>
-        /// 访问服务器时的cookies
+        /// 整个Session的cookie
         /// </summary>
         public static CookieContainer CookiesContainer;
-
-        /// <summary>  
-        /// 下载网站图片  
-        /// </summary>  
-        /// <param name="picUrl"></param>  
-        /// <returns></returns>  
-        public static string SaveAsWebImg(string picUrl, string Savepath)
-        {
-            string result = "";
-            //string path = "E:\\";  //目录  
-            try
-            {
-                if (!String.IsNullOrEmpty(picUrl))
-                {
-                    Random rd = new Random();
-                    DateTime nowTime = DateTime.Now;
-                    string fileName = nowTime.Month.ToString() + nowTime.Day.ToString() + nowTime.Hour.ToString() + nowTime.Minute.ToString() + nowTime.Second.ToString() + rd.Next(1000, 1000000) + ".jpeg";
-                    WebClient webClient = new WebClient();
-                    webClient.DownloadFile(picUrl, Savepath);
-                    result = fileName;
-                }
-            }
-            catch { }
-            return result;
-        }
-
-
-       
+        /// <summary>
+        /// Session带Cookie的HTTPGET
+        /// </summary>
+        /// <param name="getUrl"></param>
+        /// <returns></returns>
         public static string WebGet(string getUrl)
         {
             string strResult = "";
@@ -63,11 +40,15 @@ namespace wxBot.NET
             }
             catch (Exception ex)
             {
-
             }
             return strResult;
         }
-
+        /// <summary>
+        /// Session带Cookie的HTTPPOIST
+        /// </summary>
+        /// <param name="postUrl"></param>
+        /// <param name="strPost"></param>
+        /// <returns></returns>
         public static string WebPost(string postUrl, string strPost)
         {
             string strResult = "";
@@ -101,12 +82,15 @@ namespace wxBot.NET
             }
             catch (Exception ex)
             {
-
             }
-
             return strResult;
         }
-
+        /// <summary>
+        /// 新的不带Cookie的HTTPPOIST
+        /// </summary>
+        /// <param name="postUrl"></param>
+        /// <param name="strPost"></param>
+        /// <returns></returns>
         public static string WebPost2(string postUrl, string strPost)
         {
             string strResult = "";
@@ -140,12 +124,8 @@ namespace wxBot.NET
             }
             catch (Exception ex)
             {
-
             }
-
             return strResult;
         }
-       
-
     }
 }

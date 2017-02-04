@@ -26,8 +26,8 @@ namespace wxBot.NET
         private string sid = "";
         private string skey = "";
         private string pass_ticket = "";
-        private string device_id = "e1615250492";     // 'e' + repr(random.random())[2:17]
-
+        private string device_id = "e"+new Random().NextDouble().ToString("f16").Replace(".", string.Empty).Substring(1);     // 'e' + repr(random.random())[2:17]
+      
         private string base_request = "";
         private static Dictionary<string, string> dic_sync_key = new Dictionary<string, string>();
         private static Dictionary<string, string> dic_my_account = new Dictionary<string, string>();
@@ -176,7 +176,7 @@ namespace wxBot.NET
         public void gen_qr_code()
         {
             string url = "https://login.weixin.qq.com/l/" + uuid;
-            Image QRCode=Common.GenerateQRCode(url, Color.Black, Color.White);
+            Image QRCode=Common.GenerateQRCode(url, Color.Black, Color.White);            
             if (QRCode != null)
             {
                 QRCode.Save("img\\QRcode.png", System.Drawing.Imaging.ImageFormat.Png);
