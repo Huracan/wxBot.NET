@@ -15,3 +15,4 @@ E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Debug\Gma.QrCodeN
 E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Debug\Config\conf.ini
 E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Debug\img\QRcode.png
 E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\obj\Debug\wxBot.NET.csprojResolveAssemblyReference.cache
+E:\工程\微信机器人研究\GitHub\wxBot.NET\wxBot.NET\bin\Debug\Newtonsoft.Json.dll

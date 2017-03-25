@@ -48,6 +48,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="functions.cs" />
     <Compile Include="Utility\Log.cs" />
     <Compile Include="Objects\wxMsg.cs" />
     <Compile Include="Objects\wxUser.cs" />

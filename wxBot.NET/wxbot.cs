@@ -40,6 +40,7 @@ namespace wxBot.NET
         private List<Object> public_list = new List<object>();   //公共号
         private List<Object> special_list = new List<object>();   //特殊号
         private List<Object> group_list = new List<object>();   //群聊
+        private List<Object> encry_chat_room_id_list = new List<object>();   //存储群聊的EncryChatRoomId，获取群内成员头像时需要用到
 
         public  wxbot()
         {
@@ -104,6 +105,7 @@ namespace wxBot.NET
             public_list.Clear();
             special_list.Clear();
             group_list.Clear();
+            encry_chat_room_id_list.Clear();
 
             string[] special_users = {"newsapp", "fmessage", "filehelper", "weibo", "qqmail",
                          "fmessage", "tmessage", "qmessage", "qqsync", "floatbottle",
@@ -149,8 +151,17 @@ namespace wxBot.NET
                        contact_list.Add(user); //联系人
                    }
                }
-           }          
-        }        
+           }
+           //foreach( )
+        }
+        /// <summary>
+        /// 批量获取所有群聊成员信息
+        /// </summary>
+        public void batch_get_group_members()
+        {
+            string r = (DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds.ToString("f0");
+            string url = base_uri + "/webwxbatchgetcontact?type=ex&r="+r+ "&pass_ticket=";
+        }
         /// <summary>
         /// 获取本次登录会话ID->uuid
         /// </summary>
@@ -596,8 +607,27 @@ namespace wxBot.NET
         public class message
         {
             public csMSG Msg { get; set; }
-            public csBaseRequest BaseRequest { get; set; }           
+            public csBaseRequest BaseRequest { get; set; }
         }
+
+        public void get_icon(string uid, string gid = null)
+        {
+            //     获取联系人或者群聊成员头像
+            //: param uid: 联系人id
+            // : param gid: 群id，如果为非None获取群中成员头像，如果为None则获取联系人头像
+            string url = string.Empty;
+            if(gid is null)
+            {
+                url = base_uri + "webwxgeticon?username=" + uid + "&skey=" + skey;
+            }
+            else
+            {
+                //url=base_uri+ "webwxgeticon?username="+uid+"&skey="+skey+"&chatroomid="
+            }
+
+        }
+
+       
 
         public string get_user_id(string Name)
         {

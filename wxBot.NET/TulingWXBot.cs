@@ -16,7 +16,7 @@ namespace wxBot.NET
         {
             try
             {
-                IniHelper _IniHelper = new IniHelper(Environment.CurrentDirectory + "\\conf.ini");
+                IniHelper _IniHelper = new IniHelper(Environment.CurrentDirectory + "\\Config\\conf.ini");
                 tuling_key = _IniHelper.ReadValue("main", "key");
                 if (tuling_key == "")
                 {
