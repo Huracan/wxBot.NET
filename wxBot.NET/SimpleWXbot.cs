@@ -12,7 +12,7 @@ namespace wxBot.NET
         {
             if (msg.Type == 4 && msg.ContentType == 0)
             {
-                string uid = get_user_id("filehelper");
+                string uid = get_user_id("文件传输助手");
                 send_msg_by_uid("test,do not reply", uid);
             }
         }

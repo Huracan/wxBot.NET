@@ -19,7 +19,7 @@ namespace wxBot.NET
         {
             foreach (Object u in contact_list)
             {
-                wxUser user = u as wxUser;
+                wxContact user = u as wxContact;
                 if (user != null)
                 {
                     if (user.RemarkName == Name || user.NickName == Name)  //接收别人消息

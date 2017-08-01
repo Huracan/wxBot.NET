@@ -17,7 +17,7 @@ namespace wxBot.NET
         private string SUCCESS = "200";
         private string SCANED = "201";
         private string TIMEOUT = "408";
-
+        
         private string uuid = "";
         private string redirect_uri = "";
         private string base_uri = "";
@@ -27,20 +27,34 @@ namespace wxBot.NET
         private string skey = "";
         private string pass_ticket = "";
         private string device_id = "e"+new Random().NextDouble().ToString("f16").Replace(".", string.Empty).Substring(1);     // 'e' + repr(random.random())[2:17]
-      
         private string base_request = "";
+        private string base_request2 = "";
+
+        private int batch_count = 50;    //一次拉取50个联系人的信息
+        private string full_user_name_list;    //直接获取不到通讯录时，获取的username列表
+
         private static Dictionary<string, string> dic_sync_key = new Dictionary<string, string>();
         private static Dictionary<string, string> dic_my_account = new Dictionary<string, string>();
         string sync_key_str = "";
         string sync_host="";
-    
-     
-        private wxUser _me;    // 当前登录微信用户
+
+        string status = "wait4login"; //表示机器人状态，供WEBAPI读取，WxbotManage使用
+        string bot_conf = ""; //机器人配置，在webapi初始化的时候传入，后续也可修改，WxbotManage使用
+
+        private wxContact me;    // 当前登录微信用户
         private List<Object> contact_list = new List<object>();   //联系人
         private List<Object> public_list = new List<object>();   //公共号
         private List<Object> special_list = new List<object>();   //特殊号
         private List<Object> group_list = new List<object>();   //群聊
-        private List<Object> encry_chat_room_id_list = new List<object>();   //存储群聊的EncryChatRoomId，获取群内成员头像时需要用到
+        private List<Object> normal_list=new List<object>(); //除去多人聊天以外的联系人
+        private List<Models.wxGroup> groupinfo_list = new List<Models.wxGroup>(); //群聊信息
+
+        //private List<Object> encry_chat_room_id_list = new List<object>();   //存储群聊的EncryChatRoomId，获取群内成员头像时需要用到
+
+        private static Dictionary<string, JArray> group_members = new Dictionary<string, JArray>();
+        private static Dictionary<string, string> encry_chat_room_id_list = new Dictionary<string, string>();//用自字典存储方便查找
+
+
 
         public  wxbot()
         {
@@ -101,10 +115,12 @@ namespace wxBot.NET
         /// </summary>
         public void get_contact()
         {
+
             contact_list.Clear();
             public_list.Clear();
             special_list.Clear();
             group_list.Clear();
+            normal_list.Clear();
             encry_chat_room_id_list.Clear();
 
             string[] special_users = {"newsapp", "fmessage", "filehelper", "weibo", "qqmail",
@@ -122,9 +138,9 @@ namespace wxBot.NET
            {
                foreach (JObject contact in contact_result["MemberList"])  //完整好友名单
                {
-                   wxUser user = new wxUser();
-                   user.UserName = contact["UserName"].ToString();
-                   user.City = contact["City"].ToString();
+                   wxContact user = new wxContact();
+                   user.UserName = contact["UserName"].ToString();                  
+                   user.City = contact["City"].ToString();                  
                    user.HeadImgUrl = contact["HeadImgUrl"].ToString();
                    user.NickName = contact["NickName"].ToString();
                    user.Province = contact["Province"].ToString();
@@ -132,36 +148,102 @@ namespace wxBot.NET
                    user.RemarkName = contact["RemarkName"].ToString();
                    user.RemarkPYQuanPin = contact["RemarkPYQuanPin"].ToString();
                    user.Sex = contact["Sex"].ToString();
-                   user.Signature = contact["Signature"].ToString();                  
+                   //user.Signature = contact["Signature"].ToString();                  
                   
                    if((int.Parse(contact["VerifyFlag"].ToString())&8)!= 0) //公众号
                    {
-                       public_list.Add(user);
+                       public_list.Add(user);  
+                       normal_list.Add(user);
                    }
                    else if (special_users.Contains(contact["UserName"].ToString())) //特殊账户
                    {
                        special_list.Add(user);
+                       normal_list.Add(user);
                    }
                    else if (contact["UserName"].ToString().IndexOf("@@") != -1) //群聊
                    {
                        group_list.Add(user);
+                       normal_list.Add(user);
                    }
                    else
                    {
                        contact_list.Add(user); //联系人
+                       normal_list.Add(user);
                    }
                }
            }
-           //foreach( )
+           //上面只是获取多人聊天的名片，这个才是获取多人聊天的具体信息
+           batch_get_group_members();
+           //foreach (var obj in group_members)
+           //{
+           //}
         }
+
+   
+
+        
+
         /// <summary>
         /// 批量获取所有群聊成员信息
         /// </summary>
         public void batch_get_group_members()
         {
             string r = (DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds.ToString("f0");
-            string url = base_uri + "/webwxbatchgetcontact?type=ex&r="+r+ "&pass_ticket=";
+            string url = base_uri + "/webwxbatchgetcontact?type=ex&r="+Common.ConvertDateTimeToInt(DateTime.Now)+ "&pass_ticket="+pass_ticket;
+            string listParam="[";
+            foreach(wxContact group in group_list)
+            {
+                listParam+=("{\"UserName\":"+group.UserName+",\"EncryChatRoomId\":\"\"},");
+            }
+            listParam = listParam.Substring(0, listParam.Length - 1);
+            listParam+="]";
+            string postParams="BaseRequest="+base_request2+"&Count="+group_list.Count+"&List="+listParam;
+
+            Models.wxRequestParams.GroupPostParams _GroupPostParams = new Models.wxRequestParams.GroupPostParams();
+            Models.wxRequestParams.BaseRequestParam _BaseRequest = new Models.wxRequestParams.BaseRequestParam();
+            _BaseRequest.Sid = sid;
+            _BaseRequest.Skey = skey;
+            _BaseRequest.Uin = uin;
+            _BaseRequest.DeviceID = device_id;
+            foreach (wxContact group in group_list)
+            {
+                Models.wxRequestParams.listParam _listParam = new Models.wxRequestParams.listParam();
+                _listParam.UserName = group.UserName;
+                _listParam.EncryChatRoomId = "";
+                _GroupPostParams.List.Add(_listParam);
+            }
+            _GroupPostParams.BaseRequest = _BaseRequest;
+            _GroupPostParams.Count = group_list.Count;
+        
+
+            JObject result = JsonConvert.DeserializeObject(Http.WebPostWithJsonData(url, JsonConvert.SerializeObject(_GroupPostParams))) as JObject;
+            if (result != null)
+            {
+                foreach (JObject groupInfo in result["ContactList"])
+                {
+                    Models.wxGroup group = new Models.wxGroup();
+                    group.UserName = groupInfo["UserName"].ToString();
+                    group.HeadImgUrl = groupInfo["HeadImgUrl"].ToString();
+                    group.MemberCount = groupInfo["MemberCount"].ToString();
+                    group.EncryChatRoomId = groupInfo["EncryChatRoomId"].ToString();
+                    foreach (JObject member in groupInfo["MemberList"])  //完整好友名单
+                    {
+                        Models.wxGroupMember groupMember = new Models.wxGroupMember();
+                        groupMember.UserName = member["UserName"].ToString();
+                        groupMember.NickName = member["NickName"].ToString();
+                        group.WxGroupMemberList.Add(groupMember);
+                    }
+                    groupinfo_list.Add(group);
+                }
+
+                //foreach (JObject _Jobj in result["ContactList"])
+                //{
+                //    group_members.Add(_Jobj["UserName"].ToString(), _Jobj["MemberList"] as JArray);
+                //    encry_chat_room_id_list.Add(_Jobj["UserName"].ToString(), _Jobj["EncryChatRoomId"].ToString());
+                //}
+            }
         }
+
         /// <summary>
         /// 获取本次登录会话ID->uuid
         /// </summary>
@@ -242,7 +324,7 @@ namespace wxBot.NET
                 }
                 else if (status_code == TIMEOUT)  //超时
                 {
-                    Console.WriteLine("[ERROR] WeChat login exception return_code=" + status_code + ". retry in" + try_later_secs + "secs later...");
+                    Console.WriteLine("[ERROR] WeChat login exception return_code=" + status_code + ". retry in " + try_later_secs + "secs later...");
                     tip = "1";
                     retry_time -= 1;
                     Thread.Sleep(try_later_secs * 1000);
@@ -275,7 +357,9 @@ namespace wxBot.NET
                 return false;
             }
             base_request="{{\"BaseRequest\":{{\"Uin\":\"{0}\",\"Sid\":\"{1}\",\"Skey\":\"{2}\",\"DeviceID\":\"{3}\"}}}}";
+            base_request2 = "{{\"Uin\":\"{0}\",\"Sid\":\"{1}\",\"Skey\":\"{2}\",\"DeviceID\":\"{3}\"}}";
             base_request = string.Format(base_request, uin, sid, skey,device_id);
+            base_request2 = string.Format(base_request2, uin, sid, skey, device_id);
             return true;
         }
         /// <summary>
@@ -286,17 +370,17 @@ namespace wxBot.NET
         {
             string ReturnValue = Http.WebPost(base_uri + "/webwxinit?r=" + Common.ConvertDateTimeToInt(DateTime.Now) + "&lang=en_US" + "&pass_ticket=" + pass_ticket, base_request);
             JObject init_result = JsonConvert.DeserializeObject(ReturnValue) as JObject;
-            _me = new wxUser();
-            _me.UserName = init_result["User"]["UserName"].ToString();
-            _me.City = "";
-            _me.HeadImgUrl = init_result["User"]["HeadImgUrl"].ToString();
-            _me.NickName = init_result["User"]["NickName"].ToString();
-            _me.Province = "";
-            _me.PYQuanPin = init_result["User"]["PYQuanPin"].ToString();
-            _me.RemarkName = init_result["User"]["RemarkName"].ToString();
-            _me.RemarkPYQuanPin = init_result["User"]["RemarkPYQuanPin"].ToString();
-            _me.Sex = init_result["User"]["Sex"].ToString();
-            _me.Signature = init_result["User"]["Signature"].ToString();
+            me = new wxContact();
+            me.UserName = init_result["User"]["UserName"].ToString();           
+            //me.City = init_result["User"]["City"].ToString();            
+            me.HeadImgUrl = init_result["User"]["HeadImgUrl"].ToString();
+            me.NickName = init_result["User"]["NickName"].ToString();
+            //me.Province = init_result["User"]["Province"].ToString();
+            me.PYQuanPin = init_result["User"]["PYQuanPin"].ToString();
+            me.RemarkName = init_result["User"]["RemarkName"].ToString();
+            me.RemarkPYQuanPin = init_result["User"]["RemarkPYQuanPin"].ToString();
+            me.Sex = init_result["User"]["Sex"].ToString();
+            //me.Signature = init_result["User"]["Signature"].ToString(); 
             foreach (JObject synckey in init_result["SyncKey"]["List"])  //同步键值
             {
                 dic_sync_key.Add(synckey["Key"].ToString(), synckey["Val"].ToString());
@@ -308,6 +392,7 @@ namespace wxBot.NET
             sync_key_str = sync_key_str.TrimEnd('%', '7', 'C');
             return init_result["BaseResponse"]["Ret"].ToString() =="0";
         }
+
         /// <summary>
         /// 状态通知
         /// </summary>
@@ -417,6 +502,64 @@ namespace wxBot.NET
                return null;
            }
        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="name"></param>
+        /// <returns></returns>
+       public string get_contact_prefer_name(Dictionary<string,string> dicName)
+       {
+           if (dicName == null) return null;
+           else
+           {
+               if (dicName.ContainsKey("RemarkName"))
+               {
+                   return dicName["RemarkName"];
+               }
+               if (dicName.ContainsKey("NickName"))
+               {
+                   return dicName["NickName"];
+               }
+               if (dicName.ContainsKey("DisplayName"))
+               {
+                   return dicName["DisplayName"];
+               }
+               return null;
+           }
+       }
+
+       /// <summary>
+       /// 传入用户ID，返回用户名
+       /// </summary>
+       /// <param name="Name"></param>
+       /// <returns></returns>
+       public Dictionary<string,string> get_contact_name(string uid)
+       {
+           Dictionary<string, string> returnDic = new Dictionary<string, string>();
+           foreach (wxContact _wxContact in normal_list)
+           {
+               if (_wxContact.UserName == uid)
+               {
+                   if (_wxContact.RemarkName != "")
+                   {
+                       returnDic.Add("RemarkName", _wxContact.RemarkName);
+                   }
+                   if (_wxContact.NickName != "")
+                   {
+                       returnDic.Add("NickName", _wxContact.NickName);
+                   }
+                   if (_wxContact.DisplayName != "")
+                   {
+                       returnDic.Add("DisplayName", _wxContact.DisplayName);
+                   }
+                   return returnDic;
+               }
+           }
+           return null;
+       }
+
+
         /// <summary>
         /// 判断用户是否在在联系人中
         /// </summary>
@@ -426,7 +569,7 @@ namespace wxBot.NET
        {
              foreach (Object u in contact_list)
             {
-                wxUser user = u as wxUser;
+                wxContact user = u as wxContact;
                 if (user != null)
                 {
                     if (user.UserName == Name)  
@@ -448,7 +591,7 @@ namespace wxBot.NET
        {
              foreach (Object u in public_list)
             {
-                wxUser user = u as wxUser;
+                wxContact user = u as wxContact;
                 if (user != null)
                 {
                     if (user.UserName == Name)
@@ -470,7 +613,7 @@ namespace wxBot.NET
         {
             foreach (Object u in special_list)
             {
-                wxUser user = u as wxUser;
+                wxContact user = u as wxContact;
                 if (user != null)
                 {
                     if (user.UserName == Name)
@@ -484,94 +627,191 @@ namespace wxBot.NET
             return false;
         }
 
-         public void handle_msg(JObject r)
-         {
-             //处理原始微信消息的内部函数
-             //msg_type_id:
-             //    0 -> Init
-             //    1 -> Self
-             //    2 -> FileHelper
-             //    3 -> Group
-             //    4 -> Contact
-             //    5 -> Public
-             //    6 -> Special
-             //    99 -> Unknown
-             //:param r: 原始微信消息
-             foreach (JObject m in r["AddMsgList"])
-             {
-                 string from = m["FromUserName"].ToString();   //发信人ID
-                 string to = m["ToUserName"].ToString();     //收信人ID
-                 string content = m["Content"].ToString();
-                 string content_type = m["MsgType"].ToString();
-                 string MsgID=m["MsgId"].ToString();
+        //获取联系人的名称
+     private  string  get_contact_prefer_name(string name)
+     {
+        if (name== null)
+            return null;
+        //if 'remark_name' in name:
+        //    return name['remark_name']
+        //if 'nickname' in name:
+        //    return name['nickname']
+        //if 'display_name' in name:
+        //    return name['display_name']
+        //return None
+         return "";
+     }
+
+        /// <summary>
+        /// handle_msg函数内序列化用
+        /// </summary>
+        public class User
+        {
+            public string id;
+            public string name="unknown";
+        }
+
+        public void handle_msg(JObject r)
+        {
+            //处理原始微信消息的内部函数
+            //msg_type_id:
+            //    0 -> Init
+            //    1 -> Self
+            //    2 -> FileHelper
+            //    3 -> Group
+            //    4 -> Contact
+            //    5 -> Public
+            //    6 -> Special
+            //    99 -> Unknown
+            //:param r: 原始微信消息
+            foreach (JObject msg in r["AddMsgList"])
+            {
+                User user = new User();
+                int msg_type_id = 0;
+                user.id = msg["FromUserName"].ToString();
+                user.name = "unknown";
+                if ((int)msg["MsgType"] == 51 && (int)msg["StatusNotifyCode"] == 4)  // init message
+                {
+                    msg_type_id = 0;
+                    user.name = "system";
+                    //会获取所有联系人的username 和 wxid，但是会收到3次这个消息，只取第一次
+                    //if self.is_big_contact and len(self.full_user_name_list) == 0:
+                    //self.full_user_name_list = msg['StatusNotifyUserName'].split(",")
+                    //self.wxid_list = re.search(r"username&gt;(.*?)&lt;/username", msg["Content"]).group(1).split(",")
+                    //with open(os.path.join(self.temp_pwd,'UserName.txt'), 'w') as f:
+                    //    f.write(msg['StatusNotifyUserName'])
+                    //with open(os.path.join(self.temp_pwd,'wxid.txt'), 'w') as f:
+                    //    f.write(json.dumps(self.wxid_list))
+                    //print "[INFO] Contact list is too big. Now start to fetch member list ."
+                    //#self.get_big_contact()
+                }
+                //if (true)
+                //{
+                //}
+                else if ((int)msg["MsgType"] == 37) //friend request
+                {
+                    msg_type_id = 37;
+                }
+                //string from = m["FromUserName"].ToString();   //发信人ID
+                //string to = m["ToUserName"].ToString();     //收信人ID
+                //string content = m["Content"].ToString();
+                //string content_type = m["MsgType"].ToString();
+                //string MsgID=m["MsgId"].ToString();
+
+                else if (msg["FromUserName"].ToString() == me.UserName)  //Self
+                {
+                    msg_type_id = 1;
+                    user.name = "self";
+                }
+                else if (msg["ToUserName"].ToString() == "filehelper")    //File Helper
+                {
+                    msg_type_id = 2;
+                    user.name = "file_helper";
+                }
+                else if (msg["FromUserName"].ToString().Substring(0, 2) == "@@")   //Group
+                {
+                    msg_type_id = 3;
+                    user.name = get_contact_prefer_name(get_contact_name(user.id));
+                }
+                else if (is_contact(msg["FromUserName"].ToString()))         //Contact
+                {
+                    msg_type_id = 4;
+                    user.name = get_contact_prefer_name(get_contact_name(user.id));
+                }
+                else if (is_public(msg["FromUserName"].ToString()))         //Public
+                {
+                    msg_type_id = 5;
+                    user.name = get_contact_prefer_name(get_contact_name(user.id));
+                }
+                else if (is_special(msg["FromUserName"].ToString()))         //Special
+                {
+                    msg_type_id = 6;
+                    user.name = get_contact_prefer_name(get_contact_name(user.id));
+                }
+                else 
+                {
+                    msg_type_id=99;
+                    user.name="unknown";
+                }
+
+                #region historyCode
+                //wxMsg msgx = new wxMsg();
+
+            //msg.From = from;
+                ////msg.Content = content_type == "1" ? content : "请在其他设备上查看消息";  //只接受文本消息
+                //msg.Content=content;
+                //msg.Readed = false;
+                //msg.Time = DateTime.Now;
+                //msg.To = to;
+                //msg.ContentType = int.Parse(content_type);
+                //msg.MsgID=MsgID;
+
+            //if (from == _me.UserName)   // Self
+                //{
+                //    msg.Type = 1;
+                //}
+                //else if (to == "filehelper")   // File Helper
+                //{
+                //    msg.Type = 2;
+                //}
+                //else if (from.IndexOf("@@") != -1) //群聊
+                //{
+                //    msg.Type = 3;
+                //}
+                //else if (is_contact(from))  // Contact
+                //{
+                //    msg.Type = 4;
+                //}
+                //else if (is_public(from))  // Public
+                //{
+                //    msg.Type = 5;
+                //}
+                //else if (is_special(from)) //special
+                //{
+                //    msg.Type = 6;
+                //}
+                //else
+                //    msg.Type = 99;
 
 
-                 wxMsg msg = new wxMsg();
-            
-                 msg.From = from;
-                 //msg.Content = content_type == "1" ? content : "请在其他设备上查看消息";  //只接受文本消息
-                 msg.Content=content;
-                 msg.Readed = false;
-                 msg.Time = DateTime.Now;
-                 msg.To = to;
-                 msg.ContentType = int.Parse(content_type);
-                 msg.MsgID=MsgID;
+                //if (msg.ContentType == 51)  //屏蔽一些系统数据
+                //{
+                //    continue;
+                //}
+                //foreach (Object u in contact_list)
+                //{
+                //    wxContact user = u as wxContact;
+                //    if (user != null)
+                //    {
+                //        if (user.UserName == msg.From && msg.To == _me.UserName)  //接收别人消息
+                //        {
 
-                 if (from == _me.UserName)   // Self
-                 {
-                     msg.Type = 1;
-                 }
-                 else if (to == "filehelper")   // File Helper
-                 {
-                     msg.Type = 2;
-                 }
-                 else if (from.IndexOf("@@") != -1) //群聊
-                 {
-                     msg.Type = 3;
-                 }
-                 else if (is_contact(from))  // Contact
-                 {
-                     msg.Type = 4;
-                 }
-                 else if (is_public(from))  // Public
-                 {
-                     msg.Type = 5;
-                 }
-                 else if (is_special(from)) //special
-                 {
-                     msg.Type = 6;
-                 }
-                 else
-                     msg.Type = 99;
+                //            //user.ReceiveMsg(msg);
+                //            //break;
+                //        }
+                //        else if (user.UserName == msg.To && msg.From == _me.UserName)  //同步自己在其他设备上发送的消息
+                //        {
 
+                //            //SendMsg(msg, true);
+                //            //break;
+                //        }
+                //    }
+                //}
+                #endregion
 
-                 if (msg.ContentType == 51)  //屏蔽一些系统数据
-                 {
-                     continue;
-                 }
-                 //foreach (Object u in contact_list)
-                 //{
-                 //    wxUser user = u as wxUser;
-                 //    if (user != null)
-                 //    {
-                 //        if (user.UserName == msg.From && msg.To == _me.UserName)  //接收别人消息
-                 //        {
+                user.name = System.Net.WebUtility.UrlDecode(user.name);
+                wxMsg _wxMsg = new wxMsg();                
+                _wxMsg = extract_msg_content(msg_type_id, msg);
+                _wxMsg.Type = msg_type_id;
+                _wxMsg.Readed = false;
+                _wxMsg.Time = DateTime.Now;
+                _wxMsg.To = msg["ToUserName"].ToString();
+                _wxMsg.From = msg["FromUserName"].ToString();
+                _wxMsg.MsgID = msg["MsgId"].ToString();
+                handle_msg_all(_wxMsg);
 
-                 //            //user.ReceiveMsg(msg);
-                 //            //break;
-                 //        }
-                 //        else if (user.UserName == msg.To && msg.From == _me.UserName)  //同步自己在其他设备上发送的消息
-                 //        {
-
-                 //            //SendMsg(msg, true);
-                 //            //break;
-                 //        }
-                 //    }
-                 //}
-                 msg=extract_msg_content(msg);
-                 handle_msg_all(msg);
-             }
-         }
+            }
+        }
 
        public virtual void handle_msg_all(wxMsg msg)
        {
@@ -610,30 +850,42 @@ namespace wxBot.NET
             public csBaseRequest BaseRequest { get; set; }
         }
 
-        public void get_icon(string uid, string gid = null)
-        {
-            //     获取联系人或者群聊成员头像
-            //: param uid: 联系人id
-            // : param gid: 群id，如果为非None获取群中成员头像，如果为None则获取联系人头像
-            string url = string.Empty;
-            if(gid is null)
-            {
-                url = base_uri + "webwxgeticon?username=" + uid + "&skey=" + skey;
-            }
-            else
-            {
-                //url=base_uri+ "webwxgeticon?username="+uid+"&skey="+skey+"&chatroomid="
-            }
+        //public void get_icon(string uid, int gid = 0)
+        //{
+        //    // 获取联系人或者群聊成员头像
+        //    // : param uid: 联系人id
+        //    // : param gid: 群id，如果为非None获取群中成员头像，如果为None则获取联系人头像
+        //    string url = string.Empty;
+        //    if(gid == 0)
+        //    {
+        //        url = base_uri + "webwxgeticon?username=" + uid + "&skey=" + skey;
+        //    }
+        //    else
+        //    {
+        //         url = base_uri + "/webwxgeticon?username="+uid+"&skey="+skey+"&chatroomid="+encry_chat_room_id_list[gid];
+        //         Http.WebGet(url);
+          
+        ////r = self.session.get(url)
+        ////data = r.content
+        ////fn = 'icon_' + uid + '.jpg'
+        ////with open(os.path.join(self.temp_pwd,fn), 'wb') as f:
+        ////    f.write(data)
+        //    }
 
-        }
+        //}
 
-       
+       public void get_contact_info(string uid)
+       {
+
+       }
+
+
 
         public string get_user_id(string Name)
         {
-            foreach (Object u in contact_list)
+            foreach (Object u in normal_list)
             {
-                wxUser user = u as wxUser;
+                wxContact user = u as wxContact;
                 if (user != null)
                 {
                     if (user.RemarkName == Name || user.NickName == Name)  //接收别人消息
@@ -656,7 +908,7 @@ namespace wxBot.NET
            message _message = new message();
            csMSG MSG = new csMSG();
            MSG.Type = 1;
-           MSG.FromUserName = _me.UserName;
+           MSG.FromUserName = me.UserName;
            MSG.ToUserName = dst;
             Random rd = new Random();
             double a = rd.NextDouble();            
@@ -727,9 +979,9 @@ namespace wxBot.NET
                 float check_time = (float)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds;
                 try
                 {
-                    string[] ReturnArray = sync_check();//[retcode, selector] 
-                    string retcode = ReturnArray[0];
-                    string selector = ReturnArray[1];
+                    string[] returnArray = sync_check();//[retcode, selector] 
+                    string retcode = returnArray[0];
+                    string selector = returnArray[1];
 
                     if (retcode == "1100")  //从微信客户端上登出
                         break;
@@ -737,61 +989,64 @@ namespace wxBot.NET
                         break;
                     else if (retcode == "0")
                     {
-                        if (selector == "2")  // 有新消息
+                        JObject r;
+                        switch (selector)
                         {
-                            JObject r = sync();
-                            if (r != null)
-                            {
-                                handle_msg(r);
-                            }
+                            case "2":  // 有新消息
+                                r = sync();
+                                if (r != null)
+                                {
+                                    handle_msg(r);
+                                }
+                                break;
+                            case "3": // 未知
+                                r = sync();
+                                if (r != null)
+                                {
+                                    handle_msg(r);
+                                }
+                                break;
+                            case "4":  //通讯录更新
+                                r = sync();
+                                if (r != null)
+                                {
+                                    get_contact();
+                                    Console.WriteLine("[INFO] Contacts Updated .");
+                                }
+                                break;
+                            case "6":  //可能是红包
+                                r = sync();
+                                if (r != null)
+                                {
+                                    handle_msg(r);
+                                }
+                                break;
+                            case "7":  //在手机上操作了微信
+                                r = sync();
+                                if (r != null)
+                                {
+                                    handle_msg(r);
+                                }
+                                break;
+                            case "0":  //无事件　
+                                break;
+                            default:
+                                Console.WriteLine("[DEBUG] sync_check:"+ retcode+","+selector);                               
+                                break;
                         }
-                        //else if ( selector == "3")  // 未知
-                        //{
-                        //    r = self.sync()
-                        //    if r is not None:
-                        //        self.handle_msg(r)
-                        //}
-                        else if (selector == "4")   //通讯录更新
-                        {
-                            JObject r = sync();
-                            if (r != null)
-                            {
-                                get_contact();
-                                Console.WriteLine("[INFO] Contacts Updated .");
-                            }
-                        }
-                        else
-                        {
-                        }
-                        //    r = self.sync()
-                        //    if r is not None:
-                        //        self.get_contact()
-                        //elif selector == '6':  # 可能是红包
-                        //    r = self.sync()
-                        //    if r is not None:
-                        //        self.handle_msg(r)
-                        //elif selector == '7':  # 在手机上操作了微信
-                        //    r = self.sync()
-                        //    if r is not None:
-                        //        self.handle_msg(r)
-                        //elif selector == '0':  # 无事件
-                        //    pass
-                        //else:
-                        //    print '[DEBUG] sync_check:', retcode, selector
-                        //    r = self.sync()
-                        //    if r is not None:
-                        //        self.handle_msg(r)
                     }
                     else
                     {
                         Thread.Sleep(2000);
-                        schedule();                        
+                        schedule();
                     }
                 }
                 catch(Exception ex)
                 {
                     Console.WriteLine("[ERROR] Except in proc_msg");
                     Console.WriteLine(ex.ToString());
+                    Log.WriteDebug(ex.ToString());
+                    
                 }
                 check_time = (float)(DateTime.Now.ToUniversalTime() - new System.DateTime(1970, 1, 1)).TotalMilliseconds - check_time;
                 if (check_time < 0.8)
@@ -818,24 +1073,30 @@ namespace wxBot.NET
         ///:param msg_type_id: 消息类型id
         ///:param msg: 消息结构体
         ///:return: 解析的消息
-        public wxMsg extract_msg_content(wxMsg msg)
+        public wxMsg extract_msg_content(int msg_type_id,JObject msg)
         {
-            int mtype = msg.ContentType;
+            wxMsg _wxMsg = new wxMsg();
+            int mtype = (int)msg["MsgType"];
             //string content = HTMLParser.HTMLParser().unescape(msg['Content']);
-            string content = System.Net.WebUtility.HtmlDecode(msg.Content);
+            string content = System.Net.WebUtility.HtmlDecode(msg["Content"].ToString());
 
-            string msg_id = msg.MsgID;
+            string msg_id = msg["MsgId"].ToString();
+            string[] returnData={};
 
             //msg_content = {}
-            if (msg.Type == 0)
+            if (msg_type_id == 0)
             {
-                msg.ContentType = 11;
+               _wxMsg.ContentType = 11;              
+               _wxMsg.Content="";
+               return _wxMsg;
             }
-            else if (msg.Type == 2)     //File Helper
+            else if (msg_type_id == 2)     //File Helper
             {
-                msg.ContentType = 0;
+                _wxMsg.ContentType = 0;
+                _wxMsg.Content = content.Replace("<br/>", "\n");
+                return _wxMsg;
             }
-            else if (msg.Type == 3)   // 群聊
+            else if (msg_type_id == 3)   // 群聊
             {
                 int sp = content.IndexOf("<br/>");
                 string uid = content.Substring(0, sp);
@@ -848,6 +1109,7 @@ namespace wxBot.NET
                 //if not name:
                 //    name = 'unknown'
                 //msg_content['user'] = {'id': uid, 'name': name}
+
             }
 
 
@@ -871,10 +1133,11 @@ namespace wxBot.NET
                     //msg_content['detail'] = data
                     //if self.DEBUG:
                     //    print '    %s[Location] %s ' % (msg_prefix, pos)
+                    return null;
                 }
                 else
                 {
-                    msg.ContentType = 0;
+                    //msg.ContentType = 0;
                     //if msg_type_id == 3 or (msg_type_id == 1 and msg['ToUserName'][:2] == '@@'):  # Group text message
                     //    msg_infos = self.proc_at_info(content)
                     //    str_msg_all = msg_infos[0]
@@ -890,6 +1153,9 @@ namespace wxBot.NET
                     //        print '    %s[Text] %s' % (msg_prefix, msg_content['data'])
                     //    except UnicodeEncodeError:
                     //        print '    %s[Text] (illegal text).' % msg_prefix
+                    _wxMsg.ContentType = 0;
+                    _wxMsg.Content = content;
+                    return _wxMsg;
                 }
             }
             //elif mtype == 3:
@@ -985,7 +1251,13 @@ namespace wxBot.NET
             //    if self.DEBUG:
             //        print '    %s[Unknown]' % msg_prefix
             //return msg_content
-            return msg;
+            //return msg;
+            return _wxMsg;
+        }
+
+        private void get_big_contact()
+        {
+           
         }
         
     }

@@ -12,8 +12,16 @@ namespace wxBot.NET
     {
         static void Main(string[] args)
         {
-            TulingWXBot newbot = new TulingWXBot();
-            newbot.run();
+            try
+            {
+                TulingWXBot newbot = new TulingWXBot();
+                //SimpleWXbot newbot = new SimpleWXbot();
+                newbot.run();
+            }
+            catch(Exception ex)
+            {
+                Log.WriteDebug(ex.ToString());
+            }
         }
     }
 }

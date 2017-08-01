@@ -29,6 +29,7 @@ namespace wxBot.NET
             bs = Encoding.Convert(Encoding.GetEncoding("UTF-8"), Encoding.GetEncoding("GB2312"), bs);
             return Encoding.GetEncoding("GB2312").GetString(bs);
         }
+
         /// <summary>  
         /// 将c# DateTime时间格式转换为Unix时间戳格式  
         /// </summary>  

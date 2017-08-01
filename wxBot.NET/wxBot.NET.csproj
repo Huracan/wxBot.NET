@@ -49,9 +49,12 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="functions.cs" />
+    <Compile Include="Models\wxGroup.cs" />
+    <Compile Include="Models\wxGroupMember.cs" />
+    <Compile Include="Models\wxRequestParams.cs" />
     <Compile Include="Utility\Log.cs" />
-    <Compile Include="Objects\wxMsg.cs" />
-    <Compile Include="Objects\wxUser.cs" />
+    <Compile Include="Models\wxMsg.cs" />
+    <Compile Include="Models\wxContact.cs" />
     <Compile Include="SimpleWXbot.cs" />
     <Compile Include="TulingWXBot.cs" />
     <Compile Include="Utility\Common.cs" />

@@ -127,5 +127,33 @@ namespace wxBot.NET
             }
             return strResult;
         }
+
+        public static string WebPostWithJsonData(string postUrl, string strPost)
+        {
+            string strURL = postUrl;
+            System.Net.HttpWebRequest request;
+            request = (System.Net.HttpWebRequest)WebRequest.Create(strURL);
+            request.Method = "POST";
+            request.ContentType = "application/json;charset=UTF-8";
+            string paraUrlCoded = strPost;
+            byte[] payload;
+            payload = System.Text.Encoding.UTF8.GetBytes(paraUrlCoded);
+            request.ContentLength = payload.Length;
+            Stream writer = request.GetRequestStream();
+            writer.Write(payload, 0, payload.Length);
+            writer.Close();
+            System.Net.HttpWebResponse response;
+            response = (System.Net.HttpWebResponse)request.GetResponse();
+            System.IO.Stream s;
+            s = response.GetResponseStream();
+            string StrDate = "";
+            string strValue = "";
+            StreamReader Reader = new StreamReader(s, Encoding.UTF8);
+            while ((StrDate = Reader.ReadLine()) != null)
+            {
+                strValue += StrDate + "\r\n";
+            }
+            return strValue;
+        }
     }
 }
